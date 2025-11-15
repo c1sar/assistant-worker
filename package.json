@@ -2,8 +2,11 @@
   "name": "assistant-worker",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify",
+    "dev:api": "wrangler dev --config wrangler.api.jsonc --persist-to .wrangler/state",
+    "dev:queue": "wrangler dev --config wrangler.queue.jsonc --persist-to .wrangler/state",
+    "deploy:api": "wrangler deploy --config wrangler.api.jsonc --minify",
+    "deploy:queue": "wrangler deploy --config wrangler.queue.jsonc --minify",
+    "deploy": "pnpm run deploy:api && pnpm run deploy:queue",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {

@@ -27,11 +27,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Deploy to Cloudflare Workers
+      - name: Create Queue (if not exists)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm run deploy
+        run: |
+          wrangler queues create reports-queue || echo "Queue already exists"
+
+      - name: Deploy API Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm run deploy:api
+
+      - name: Deploy Queue Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm run deploy:queue
 
       - name: Deployment Summary
         run: |
@@ -39,4 +52,5 @@ jobs:
           echo "Environment: Production"
           echo "Branch: ${{ github.ref_name }}"
           echo "Commit: ${{ github.sha }}"
+          echo "Workers deployed: API Worker + Queue Worker"
 

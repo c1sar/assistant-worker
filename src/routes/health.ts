@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
-import type { Env } from '../types'
+import type { QueueEnv } from '../types'
 
-const health = new Hono<{ Bindings: Env }>()
+const health = new Hono<{ Bindings: QueueEnv }>()
 
 health.get('/health', (c) => {
   return c.text('ok')

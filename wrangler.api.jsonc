@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "c1sar-assistant-api-prd",
+  "main": "src/api/index.ts",
+  "compatibility_date": "2025-11-15",
+  "kv_namespaces": [
+    {
+      "binding": "COMMITS_REPORTS",
+      "id": "aec90e3958f34f5f84c866494ce9ab61",
+      "preview_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx3"
+    },
+    {
+      "binding": "BOT_REPORTS",
+      "id": "953282d1072a41ddac24b8d67dfb38f7",
+      "preview_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx4"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "queue": "reports-queue",
+        "binding": "REPORTS_QUEUE"
+      }
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
+

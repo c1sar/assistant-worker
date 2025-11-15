@@ -1,11 +1,9 @@
 import { Hono } from 'hono'
-import type { Env } from '../types'
+import type { QueueEnv } from '../types'
 import { validateDate } from '../utils'
-import { GitHubService } from '../services/github'
-import { generateReport, logReport, saveReport, saveBotReport } from '../services/report'
-import { generateHumanReadableReport } from '../services/openai'
+import { REPOSITORIES, MAIN_BRANCHES } from '../config'
 
-const reports = new Hono<{ Bindings: Env }>()
+const reports = new Hono<{ Bindings: QueueEnv }>()
 
 reports.get('/api/reports/:date', async (c) => {
   const date = c.req.param('date')
@@ -56,64 +54,57 @@ reports.post('/api/reports/regenerate/:date', async (c) => {
     return c.json({ error: 'Invalid date format. Expected YYYY-MM-DD' }, 400)
   }
 
-  const { GITHUB_TOKEN, GITHUB_USER, OPENAI_API_KEY, COMMITS_REPORTS, BOT_REPORTS } = c.env
+  const { REPORTS_QUEUE } = c.env
 
-  if (!GITHUB_TOKEN || !GITHUB_USER) {
+  if (!REPORTS_QUEUE) {
     return c.json(
-      { error: 'GITHUB_TOKEN and GITHUB_USER must be configured' },
+      { error: 'REPORTS_QUEUE not configured' },
       500
     )
   }
 
-  if (!OPENAI_API_KEY) {
-    return c.json(
-      { error: 'OPENAI_API_KEY must be configured' },
-      500
+  console.log(`Enqueuing report generation jobs for date ${date}...`)
+
+  const totalMainBranches = REPOSITORIES.length * MAIN_BRANCHES.length
+  if (c.env.COMMITS_REPORTS) {
+    await c.env.COMMITS_REPORTS.put(
+      `progress:${date}`,
+      JSON.stringify({
+        totalBranches: totalMainBranches,
+        completedBranches: 0,
+        startedAt: new Date().toISOString()
+      }),
+      { expirationTtl: 3600 }
     )
   }
 
-  console.log(`Starting commit fetch for date ${date}...`)
+  for (const repo of REPOSITORIES) {
+    for (const branch of MAIN_BRANCHES) {
+      await REPORTS_QUEUE.send({
+        type: 'FETCH_REPO_BRANCH',
+        date,
+        repo: repo.name,
+        branch
+      })
+    }
 
-  const githubService = new GitHubService(GITHUB_TOKEN, GITHUB_USER)
-
-  const backgroundTask = githubService.fetchCommitsForDate(date)
-    .then(async (commits) => {
-      const report = generateReport(date, commits)
-      logReport(date, report)
-
-      if (COMMITS_REPORTS) {
-        await saveReport(COMMITS_REPORTS, date, report)
-      } else {
-        console.warn('⚠️  KV namespace not configured, report not saved')
-      }
-
-      if (BOT_REPORTS && OPENAI_API_KEY) {
-        try {
-          console.log(`Generating human-readable report for date ${date}...`)
-          const botReport = await generateHumanReadableReport(OPENAI_API_KEY, report)
-          
-          if (BOT_REPORTS) {
-            await saveBotReport(BOT_REPORTS, date, botReport)
-          } else {
-            console.warn('⚠️  BOT_REPORTS KV namespace not configured, bot report not saved')
-          }
-        } catch (error) {
-          console.error('Error generating bot report:', error)
-        }
-      }
+    await REPORTS_QUEUE.send({
+      type: 'FETCH_FEATURE_BRANCHES',
+      date,
+      repo: repo.name
     })
-    .catch((error) => {
-      console.error('Error fetching commits:', error)
-    })
-
-  const executionCtx = (c.env as any).__EXECUTION_CTX__ || (c as any).executionCtx
-  if (executionCtx?.waitUntil) {
-    executionCtx.waitUntil(backgroundTask)
-  } else {
-    backgroundTask.catch(() => {})
   }
 
-  return c.text('ok')
+  await REPORTS_QUEUE.send({
+    type: 'AGGREGATE_REPORT',
+    date
+  })
+
+  return c.json({ 
+    message: 'Report generation queued',
+    date,
+    queuedJobs: REPOSITORIES.length * MAIN_BRANCHES.length + REPOSITORIES.length + 1
+  })
 })
 
 export default reports

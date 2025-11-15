@@ -58,3 +58,12 @@ export interface Report {
   commits: CommitReport[]
 }
 
+export interface QueueEnv extends Env {
+  REPORTS_QUEUE?: Queue<QueueMessage>
+}
+
+export type QueueMessage = 
+  | { type: 'FETCH_REPO_BRANCH'; date: string; repo: string; branch: string }
+  | { type: 'FETCH_FEATURE_BRANCHES'; date: string; repo: string }
+  | { type: 'AGGREGATE_REPORT'; date: string }
+
