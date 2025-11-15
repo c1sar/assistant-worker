@@ -38,6 +38,12 @@ export interface CommitReport {
   authorDate: string
 }
 
+export interface Repository {
+  name: string
+  description: string
+  stack: string[]
+}
+
 export interface Report {
   date: string
   totalCommits: number

@@ -136,12 +136,12 @@ export class GitHubService {
     // Fetch from main branches
     for (const repo of REPOSITORIES) {
       for (const branch of MAIN_BRANCHES) {
-        console.log(`Fetching commits from ${repo}/${branch}...`)
+        console.log(`Fetching commits from ${repo.name}/${branch}...`)
         
-        const commits = await this.fetchCommitsFromBranch(repo, branch, date)
+        const commits = await this.fetchCommitsFromBranch(repo.name, branch, date)
         
         if (commits.length > 0) {
-          console.log(`Found ${commits.length} commits in ${repo}/${branch}`)
+          console.log(`Found ${commits.length} commits in ${repo.name}/${branch}`)
         }
         
         allCommits.push(...commits)
@@ -151,33 +151,33 @@ export class GitHubService {
     // Check feature branches
     for (const repo of REPOSITORIES) {
       await delay(API_DELAY_MS)
-      console.log(`Checking feature branches for ${repo}...`)
+      console.log(`Checking feature branches for ${repo.name}...`)
       
-      const branches = await this.fetchBranches(repo)
+      const branches = await this.fetchBranches(repo.name)
       const featureBranches = branches.filter((b) => 
         b.name !== 'main' && b.name !== 'staging' && matchesBranchPattern(b.name)
       )
       
-      console.log(`Found ${featureBranches.length} feature branches for ${repo}`)
+      console.log(`Found ${featureBranches.length} feature branches for ${repo.name}`)
       
       const unmergedBranches: string[] = []
       
       for (const branch of featureBranches) {
         await delay(API_DELAY_MS)
         
-        const merged = await this.isBranchMerged(repo, branch.name)
+        const merged = await this.isBranchMerged(repo.name, branch.name)
         if (!merged) {
           unmergedBranches.push(branch.name)
         }
       }
       
-      console.log(`Found ${unmergedBranches.length} unmerged feature branches for ${repo}`)
+      console.log(`Found ${unmergedBranches.length} unmerged feature branches for ${repo.name}`)
       
       for (const branch of unmergedBranches) {
-        const commits = await this.fetchCommitsFromBranch(repo, branch, date)
+        const commits = await this.fetchCommitsFromBranch(repo.name, branch, date)
         
         if (commits.length > 0) {
-          console.log(`Found ${commits.length} commits in ${repo}/${branch}`)
+          console.log(`Found ${commits.length} commits in ${repo.name}/${branch}`)
         }
         
         allCommits.push(...commits)
