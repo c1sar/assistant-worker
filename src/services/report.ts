@@ -1,5 +1,5 @@
-import type { CommitReport, Report } from '../types'
-import { REPORT_TTL_SECONDS } from '../config'
+import type { CommitReport, Report, QueueEnv } from '../types'
+import { REPORT_TTL_SECONDS, REPOSITORIES, MAIN_BRANCHES } from '../config'
 
 export function generateReport(date: string, commits: CommitReport[]): Report {
   const commitsByRepo: Record<string, CommitReport[]> = {}
@@ -61,7 +61,6 @@ export async function saveReport(
     throw new Error(`Failed to serialize report to valid JSON: ${error}`)
   }
   
-  // Safety check: ensure we're not accidentally saving markdown/text to COMMITS_REPORTS
   if (jsonString.includes('**Date:**') || jsonString.includes('**DONE**') || jsonString.includes('**IMPACT**')) {
     throw new Error('Attempted to save markdown/text to COMMITS_REPORTS. This should only contain JSON data.')
   }
@@ -79,7 +78,6 @@ export async function saveBotReport(
 ): Promise<void> {
   const kvKey = `report:${date}`
   
-  // Validate that botReport is a string (markdown/text, not JSON)
   if (typeof botReport !== 'string') {
     throw new Error('Bot report must be a string (markdown/text format)')
   }
@@ -88,5 +86,58 @@ export async function saveBotReport(
     expirationTtl: REPORT_TTL_SECONDS
   })
   console.log(`✅ Bot report saved to KV with key: ${kvKey}`)
+}
+
+export async function regenerateReport(
+  date: string,
+  env: QueueEnv
+): Promise<{ date: string; queuedJobs: number }> {
+  const { REPORTS_QUEUE } = env
+
+  if (!REPORTS_QUEUE) {
+    throw new Error('REPORTS_QUEUE not configured')
+  }
+
+  console.log(`Enqueuing report generation jobs for date ${date}...`)
+
+  const totalMainBranches = REPOSITORIES.length * MAIN_BRANCHES.length
+  if (env.COMMITS_REPORTS) {
+    await env.COMMITS_REPORTS.put(
+      `progress:${date}`,
+      JSON.stringify({
+        totalBranches: totalMainBranches,
+        completedBranches: 0,
+        startedAt: new Date().toISOString()
+      }),
+      { expirationTtl: 3600 }
+    )
+  }
+
+  for (const repo of REPOSITORIES) {
+    for (const branch of MAIN_BRANCHES) {
+      await REPORTS_QUEUE.send({
+        type: 'FETCH_REPO_BRANCH',
+        date,
+        repo: repo.name,
+        branch
+      })
+    }
+
+    await REPORTS_QUEUE.send({
+      type: 'FETCH_FEATURE_BRANCHES',
+      date,
+      repo: repo.name
+    })
+  }
+
+  await REPORTS_QUEUE.send({
+    type: 'AGGREGATE_REPORT',
+    date
+  })
+
+  return {
+    date,
+    queuedJobs: REPOSITORIES.length * MAIN_BRANCHES.length + REPOSITORIES.length + 1
+  }
 }
 
