@@ -59,30 +59,32 @@ ${dailyReportJson}
 
 Your task:
 
-If the dailyReport has no commits (totalCommits is 0 or commits array is empty), produce a simple message in this format:
+If the dailyReport has no commits (totalCommits is 0 or commits array is empty), produce a simple message in this markdown format:
 
-Date: <date>
+## Date: <date>
 
-NONE
+**NONE**
 
-Otherwise, produce a concise daily report in ENGLISH using this exact structure:
+Otherwise, produce a concise daily report in ENGLISH using this exact markdown structure:
 
-Date: <date>
+## Date: <date>
 
-DONE
-[Area] Short, human explanation of what was done and why it matters.
-[Area] ...
-[Area] ...
+### DONE
+- **[Area]** Short, human explanation of what was done and why it matters.
+- **[Area]** ...
+- **[Area]** ...
 
-IMPACT
-Bullet points focused on benefits for patients, doctors, operations, clinic admins or the business.
-Avoid technical jargon; speak in terms of user experience, reliability, speed, clarity, automation, etc.
+### IMPACT
+- Bullet points focused on benefits for patients, doctors, operations, clinic admins or the business.
+- Avoid technical jargon; speak in terms of user experience, reliability, speed, clarity, automation, etc.
 
-METRICS
-Total commits: <totalCommits>
-Repositories touched: <repositoriesCount>
+### METRICS
+- **Total commits:** <totalCommits>
+- **Repositories touched:** <repositoriesCount>
 
 Rules and style:
+
+IMPORTANT: Format the entire output using markdown syntax. Use ## for main headings, ### for section headings, - for bullet points, and ** for bold text.
 
 DO NOT mention repository names, branches, SHAs or file names.
 Instead, infer and use human-friendly AREA labels based on the repository descriptions.
@@ -93,26 +95,31 @@ epms-web-ui → "Public website"
 epms-web-workers → "Automation workers & background tasks"
 epms-control-center-ui → "Clinic control center (PCO dashboard)"
 
+CRITICAL: Merge commits (especially "Merge branch 'staging'" or merges into main) are DEPLOYMENT ACTIVITIES, not actual work done. They represent code being promoted to production, not new development. If the day only contains merge commits, treat it as a deployment day with minimal or no impact.
+
+ALWAYS ignore or skip merge commits unless there are other substantive commits. If all commits are merges, produce a very brief report noting deployment only.
+
 Group related commits into a single bullet when they belong to the same feature or area.
 
-Ignore or de-emphasize purely technical commits like:
-merge commits (messages starting with "Merge")
-chore/ci/refactor-only messages
+Ignore purely technical commits like:
+- merge commits (messages starting with "Merge")
+- chore/ci/refactor-only messages
 unless they clearly have a visible business impact.
 
 Use simple, direct language that any manager can understand.
 
-Be concise: usually 3–7 bullets in DONE, 2–4 in IMPACT.
+Be EXTREMELY concise:
+- For 1-2 commits: 1-2 bullets in DONE, 0-1 in IMPACT (or skip IMPACT if only merges)
+- For 3-5 commits: 2-3 bullets in DONE, 1-2 in IMPACT
+- For 6+ commits: 3-5 bullets in DONE, 2-3 in IMPACT
+
+Scale the report length proportionally to the actual work done. A single merge commit should result in a very brief report (1-2 sentences total).
 
 Do NOT invent blockers or next steps; only summarize what actually happened in the data.
 
-Tone toggle:
+Tone: Use a slightly friendly but professional tone.
 
-"Use a slightly friendly but professional tone."
-
-Max length:
-
-"Keep the total report under 250 words."`
+Max length: Keep reports under 100 words for 1-2 commits, under 150 words for 3-5 commits, under 200 words for 6+ commits.`
 }
 
 export async function generateHumanReadableReport(
