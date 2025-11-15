@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import type { Env } from '../types'
 import { validateDate } from '../utils'
 import { GitHubService } from '../services/github'
-import { generateReport, logReport, saveReport } from '../services/report'
+import { generateReport, logReport, saveReport, saveBotReport } from '../services/report'
+import { generateHumanReadableReport } from '../services/openai'
 
 const reports = new Hono<{ Bindings: Env }>()
 
@@ -27,6 +28,27 @@ reports.get('/api/reports/:date', async (c) => {
   return c.json(report)
 })
 
+reports.get('/api/reports/bot/:date', async (c) => {
+  const date = c.req.param('date')
+
+  if (!validateDate(date)) {
+    return c.json({ error: 'Invalid date format. Expected YYYY-MM-DD' }, 400)
+  }
+
+  if (!c.env.BOT_REPORTS) {
+    return c.json({ error: 'BOT_REPORTS KV namespace not configured' }, 500)
+  }
+
+  const kvKey = `report:${date}`
+  const botReport = await c.env.BOT_REPORTS.get(kvKey, 'text')
+
+  if (!botReport) {
+    return c.json({ error: 'Bot report not found for this date', date }, 404)
+  }
+
+  return c.text(botReport)
+})
+
 reports.post('/api/reports/regenerate/:date', async (c) => {
   const date = c.req.param('date')
 
@@ -34,11 +56,18 @@ reports.post('/api/reports/regenerate/:date', async (c) => {
     return c.json({ error: 'Invalid date format. Expected YYYY-MM-DD' }, 400)
   }
 
-  const { GITHUB_TOKEN, GITHUB_USER, COMMITS_REPORTS } = c.env
+  const { GITHUB_TOKEN, GITHUB_USER, OPENAI_API_KEY, COMMITS_REPORTS, BOT_REPORTS } = c.env
 
   if (!GITHUB_TOKEN || !GITHUB_USER) {
     return c.json(
       { error: 'GITHUB_TOKEN and GITHUB_USER must be configured' },
+      500
+    )
+  }
+
+  if (!OPENAI_API_KEY) {
+    return c.json(
+      { error: 'OPENAI_API_KEY must be configured' },
       500
     )
   }
@@ -56,6 +85,21 @@ reports.post('/api/reports/regenerate/:date', async (c) => {
         await saveReport(COMMITS_REPORTS, date, report)
       } else {
         console.warn('⚠️  KV namespace not configured, report not saved')
+      }
+
+      if (BOT_REPORTS && OPENAI_API_KEY) {
+        try {
+          console.log(`Generating human-readable report for date ${date}...`)
+          const botReport = await generateHumanReadableReport(OPENAI_API_KEY, report)
+          
+          if (BOT_REPORTS) {
+            await saveBotReport(BOT_REPORTS, date, botReport)
+          } else {
+            console.warn('⚠️  BOT_REPORTS KV namespace not configured, bot report not saved')
+          }
+        } catch (error) {
+          console.error('Error generating bot report:', error)
+        }
       }
     })
     .catch((error) => {

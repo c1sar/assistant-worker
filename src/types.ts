@@ -1,7 +1,9 @@
 export type Env = {
   GITHUB_TOKEN: string
   GITHUB_USER: string
+  OPENAI_API_KEY: string
   COMMITS_REPORTS: KVNamespace
+  BOT_REPORTS: KVNamespace
 }
 
 export interface GitHubBranch {

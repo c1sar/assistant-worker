@@ -52,9 +52,41 @@ export async function saveReport(
   report: Report
 ): Promise<void> {
   const kvKey = `report:${date}`
-  await kvNamespace.put(kvKey, JSON.stringify(report), {
+  const jsonString = JSON.stringify(report)
+  
+  // Validate that we're saving valid JSON
+  try {
+    JSON.parse(jsonString)
+  } catch (error) {
+    throw new Error(`Failed to serialize report to valid JSON: ${error}`)
+  }
+  
+  // Safety check: ensure we're not accidentally saving markdown/text to COMMITS_REPORTS
+  if (jsonString.includes('**Date:**') || jsonString.includes('**DONE**') || jsonString.includes('**IMPACT**')) {
+    throw new Error('Attempted to save markdown/text to COMMITS_REPORTS. This should only contain JSON data.')
+  }
+  
+  await kvNamespace.put(kvKey, jsonString, {
     expirationTtl: REPORT_TTL_SECONDS
   })
   console.log(`✅ Report saved to KV with key: ${kvKey}`)
+}
+
+export async function saveBotReport(
+  kvNamespace: KVNamespace,
+  date: string,
+  botReport: string
+): Promise<void> {
+  const kvKey = `report:${date}`
+  
+  // Validate that botReport is a string (markdown/text, not JSON)
+  if (typeof botReport !== 'string') {
+    throw new Error('Bot report must be a string (markdown/text format)')
+  }
+  
+  await kvNamespace.put(kvKey, botReport, {
+    expirationTtl: REPORT_TTL_SECONDS
+  })
+  console.log(`✅ Bot report saved to KV with key: ${kvKey}`)
 }
 

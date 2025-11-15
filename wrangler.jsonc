@@ -13,7 +13,12 @@
     {
       "binding": "COMMITS_REPORTS",
       "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      "preview_id": ""
+      "preview_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx3"
+    },
+    {
+      "binding": "BOT_REPORTS",
+      "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx2",
+      "preview_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx4"
     }
   ],
   // "r2_buckets": [
