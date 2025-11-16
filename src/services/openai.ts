@@ -149,8 +149,7 @@ export async function generateHumanReadableReport(
           content: prompt
         }
       ],
-      temperature: 0.7,
-      max_tokens: 500
+      max_completion_tokens: 500
     })
   })
 
