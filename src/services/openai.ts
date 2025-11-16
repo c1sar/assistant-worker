@@ -1,14 +1,17 @@
 import type { Report, Repository } from '../types'
 import { REPOSITORIES } from '../config'
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions'
+const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 
 interface OpenAIResponse {
-  choices: Array<{
-    message: {
-      content: string
-    }
-  }>
+  output?: string
+  text?: {
+    content?: string
+  }
+  error?: {
+    message: string
+    type: string
+  }
 }
 
 function formatRepositoriesContext(): string {
@@ -143,13 +146,23 @@ export async function generateHumanReadableReport(
     },
     body: JSON.stringify({
       model: 'gpt-5-nano',
-      messages: [
+      input: [
         {
           role: 'user',
           content: prompt
         }
       ],
-      max_completion_tokens: 500
+      text: {
+        format: {
+          type: 'text'
+        },
+        verbosity: 'medium'
+      },
+      reasoning: {
+        effort: 'medium'
+      },
+      tools: [],
+      store: true
     })
   })
 
@@ -159,10 +172,17 @@ export async function generateHumanReadableReport(
   }
 
   const data = (await response.json()) as OpenAIResponse
-  const content = data.choices?.[0]?.message?.content
+  
+  if (data.error) {
+    console.error('OpenAI API error response:', JSON.stringify(data, null, 2))
+    throw new Error(`OpenAI API error: ${data.error.message}`)
+  }
+
+  const content = data.output || data.text?.content
 
   if (!content) {
-    throw new Error('No content returned from OpenAI API')
+    console.error('OpenAI API response structure:', JSON.stringify(data, null, 2))
+    throw new Error(`No content returned from OpenAI API. Response structure: ${JSON.stringify(data)}`)
   }
 
   return content
