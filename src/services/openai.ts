@@ -75,8 +75,15 @@ Otherwise, produce a concise daily report in ENGLISH using this exact markdown s
 - **[Area]** ...
 
 ### IMPACT
-- Bullet points focused on benefits for patients, doctors, operations, clinic admins or the business.
-- Avoid technical jargon; speak in terms of user experience, reliability, speed, clarity, automation, etc.
+- List only the app names affected, one per line. Use these exact names:
+  - Patient Portal (for epms-patient-ui)
+  - Admin Portal (for epms-admin-ui)
+  - Backend API (for epms-api)
+  - Doctor Portal (for epms-doctor-ui)
+  - Public Website (for epms-web-ui)
+  - Partner Portal (for epms-partner-ui)
+  - Control Center (for epms-control-center-ui)
+- Do NOT include explanations or descriptions, only the app names.
 
 ### METRICS
 - **Total commits:** <totalCommits>
@@ -95,9 +102,9 @@ epms-web-ui → "Public website"
 epms-web-workers → "Automation workers & background tasks"
 epms-control-center-ui → "Clinic control center (PCO dashboard)"
 
-CRITICAL: Merge commits (especially "Merge branch 'staging'" or merges into main) are DEPLOYMENT ACTIVITIES, not actual work done. They represent code being promoted to production, not new development. If the day only contains merge commits, treat it as a deployment day with minimal or no impact.
+CRITICAL: When a commit message contains "Merge" (e.g., "Merge pull request", "Merge branch"), it represents a DEPLOYMENT, not actual work done. In the DONE section, use the word "deploy" or "deployment" instead of describing it as development work. For example, write "**[Area]** Deploy [feature name]" instead of "**[Area]** Implemented [feature name]".
 
-ALWAYS ignore or skip merge commits unless there are other substantive commits. If all commits are merges, produce a very brief report noting deployment only.
+If all commits are merges, treat it as a deployment day and use "deploy" language throughout.
 
 Group related commits into a single bullet when they belong to the same feature or area.
 
@@ -135,7 +142,7 @@ export async function generateHumanReadableReport(
       'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-nano',
       messages: [
         {
           role: 'user',
