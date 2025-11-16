@@ -178,6 +178,9 @@ export async function generateHumanReadableReport(
     throw new Error(`OpenAI API error: ${data.error.message}`)
   }
 
+  // Log the full response structure for debugging
+  console.log('OpenAI API response structure:', JSON.stringify(data, null, 2))
+
   const content = data.output || data.text?.content
 
   if (!content) {
@@ -185,6 +188,30 @@ export async function generateHumanReadableReport(
     throw new Error(`No content returned from OpenAI API. Response structure: ${JSON.stringify(data)}`)
   }
 
-  return content
+  // Ensure we always return a string
+  let reportString: string
+  if (typeof content === 'string') {
+    reportString = content
+  } else if (typeof content === 'object') {
+    // If content is an object, try to extract text from it or stringify it
+    console.warn('Content is not a string, attempting to convert:', typeof content, content)
+    if (content && typeof content === 'object' && 'text' in content) {
+      reportString = String((content as any).text)
+    } else if (content && typeof content === 'object' && 'content' in content) {
+      reportString = String((content as any).content)
+    } else {
+      reportString = JSON.stringify(content)
+    }
+  } else {
+    reportString = String(content)
+  }
+
+  if (!reportString || reportString.trim().length === 0) {
+    console.error('Generated report is empty. Original content:', content)
+    throw new Error('Generated report is empty or invalid')
+  }
+
+  console.log(`Generated report length: ${reportString.length} characters`)
+  return reportString
 }
 
