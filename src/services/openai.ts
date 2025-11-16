@@ -3,8 +3,16 @@ import { REPOSITORIES } from '../config'
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/responses'
 
+interface OutputMessage {
+  type: string
+  content?: Array<{
+    type: string
+    text?: string
+  }>
+}
+
 interface OpenAIResponse {
-  output?: string
+  output?: OutputMessage[] | string
   text?: {
     content?: string
   }
@@ -178,36 +186,33 @@ export async function generateHumanReadableReport(
     throw new Error(`OpenAI API error: ${data.error.message}`)
   }
 
-  // Log the full response structure for debugging
   console.log('OpenAI API response structure:', JSON.stringify(data, null, 2))
 
-  const content = data.output || data.text?.content
+  let reportString: string | null = null
 
-  if (!content) {
-    console.error('OpenAI API response structure:', JSON.stringify(data, null, 2))
-    throw new Error(`No content returned from OpenAI API. Response structure: ${JSON.stringify(data)}`)
-  }
-
-  // Ensure we always return a string
-  let reportString: string
-  if (typeof content === 'string') {
-    reportString = content
-  } else if (typeof content === 'object') {
-    // If content is an object, try to extract text from it or stringify it
-    console.warn('Content is not a string, attempting to convert:', typeof content, content)
-    if (content && typeof content === 'object' && 'text' in content) {
-      reportString = String((content as any).text)
-    } else if (content && typeof content === 'object' && 'content' in content) {
-      reportString = String((content as any).content)
-    } else {
-      reportString = JSON.stringify(content)
+  if (Array.isArray(data.output)) {
+    const messageOutput = data.output.find((item: OutputMessage) => item.type === 'message')
+    if (messageOutput?.content && Array.isArray(messageOutput.content)) {
+      const textContent = messageOutput.content.find((item) => item.type === 'output_text')
+      if (textContent?.text && typeof textContent.text === 'string') {
+        reportString = textContent.text
+      }
     }
-  } else {
-    reportString = String(content)
+  } 
+  else if (typeof data.output === 'string') {
+    reportString = data.output
+  }
+  else if (data.text?.content && typeof data.text.content === 'string') {
+    reportString = data.text.content
   }
 
-  if (!reportString || reportString.trim().length === 0) {
-    console.error('Generated report is empty. Original content:', content)
+  if (!reportString) {
+    console.error('Could not extract text from OpenAI API response. Structure:', JSON.stringify(data, null, 2))
+    throw new Error(`No text content found in OpenAI API response. Response structure: ${JSON.stringify(data)}`)
+  }
+
+  if (reportString.trim().length === 0) {
+    console.error('Generated report is empty. Extracted text:', reportString)
     throw new Error('Generated report is empty or invalid')
   }
 
